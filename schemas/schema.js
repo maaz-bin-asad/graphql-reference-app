@@ -1,11 +1,11 @@
 const graphql = require('graphql');
 
-const { GraphQLObjectType, GraphQLString, GraphQLID } = graphql;
+const { GraphQLObjectType, GraphQLString, GraphQLID, GraphQLList } = graphql;
 
 // dummy database
 var books = [
     { name: 'Lord of the Rings', genre: 'Fantasy', id: "1", authorId: "1" },
-    { name: 'The Fault in our stars', genre: 'Young Adult', id: "1", authorId: "2" },
+    { name: 'The Fault in our stars', genre: 'Young Adult', id: "1", authorId: "1" },
 ]
 
 var authors = [
@@ -23,6 +23,7 @@ const BookType = new GraphQLObjectType({
         // populating here
         author: {
             type: AuthorType,
+            // parent is the root document found
             resolve(parent, args) {
                 return authors.find((author)=>{
                     return author.id == parent.authorId
@@ -38,6 +39,14 @@ const AuthorType = new GraphQLObjectType({
         id: { type: graphql.GraphQLID },
         name: { type: graphql.GraphQLString },
         age: { type: graphql.GraphQLInt },
+        books: {
+            type: new graphql.GraphQLList(BookType),
+            resolve(parent, args) {
+                return books.filter((book)=>{
+                    return book.authorId == parent.id
+                })
+            }
+        }
     })
 })
 
@@ -70,6 +79,18 @@ const RootQuery = new GraphQLObjectType({
                 return authors.find((author)=>{
                     return author.id == id
                 })
+            }
+        },
+        books: {
+            type: new GraphQLList(BookType),
+            resolve(parent, args) {
+                return books
+            }
+        },
+        authors: {
+            type: new GraphQLList(AuthorType),
+            resolve(parent, args) {
+                return authors
             }
         }
     }
