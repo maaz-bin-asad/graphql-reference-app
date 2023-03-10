@@ -1,0 +1,35 @@
+For Queries
+
+query {
+  books {
+    name
+    genre
+  }
+  authors {
+    name
+    age
+  }
+  author(id: "640b0350876819dabf8f8277") {
+    name
+    age
+  }
+  book(id: "640b828b3f8926b19846199d") {
+    name 
+    genre
+  }
+}
+
+
+For Mutations
+
+mutation {
+  addAuthor(name: "Dan Brown", age: 150) {
+    name
+  }
+}
+
+mutation {
+  addBook(name: "the Da Vinci Code", genre: "Crime Fiction", authorId: "640b86a532642bb8fc4f23ef") {
+    name
+  }
+}

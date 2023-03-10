@@ -2,7 +2,10 @@ const graphql = require('graphql');
 
 const { GraphQLObjectType, GraphQLString, GraphQLID, GraphQLList } = graphql;
 
+const Book = require('../models/book');
+const Author = require('../models/author');
 // dummy database
+/*
 var books = [
     { name: 'Lord of the Rings', genre: 'Fantasy', id: "1", authorId: "1" },
     { name: 'The Fault in our stars', genre: 'Young Adult', id: "1", authorId: "1" },
@@ -12,8 +15,10 @@ var authors = [
     { name: 'George R. R. Martin', age: 151, id: "1" },
     { name: 'Charles Dickens', age: 200, id: "2" },
 ]
+*/
+
 // This code defines a GraphQL object type called BookType, 
-// which has three fields: id, name, and genre. Each field specifies its type using the type property, which in this case is graphql.GraphQLString.
+// which has four fields: id, name, genre and author. Each field specifies its type using the type property, which in this case is graphql.GraphQLString and for author we need to run a resolve function that performs join operation to populate the subdocument.
 const BookType = new GraphQLObjectType({
     name: 'Book',
     fields: () => ({
@@ -25,9 +30,8 @@ const BookType = new GraphQLObjectType({
             type: AuthorType,
             // parent is the root document found
             resolve(parent, args) {
-                return authors.find((author)=>{
-                    return author.id == parent.authorId
-                })
+                // find the author document for populating
+                return Author.findById(parent.authorId)
             }
         }
     })
@@ -42,20 +46,18 @@ const AuthorType = new GraphQLObjectType({
         books: {
             type: new graphql.GraphQLList(BookType),
             resolve(parent, args) {
-                return books.filter((book)=>{
-                    return book.authorId == parent.id
-                })
+                return Book.find({authorId: parent.id})
             }
         }
     })
 })
 
-// This code represents the schema of a GraphQL server, and specifies the available queries that a client can make. In this case, the 'book' field is the only query that is available, and it takes an id argument to retrieve a specific book.
-// The GraphQLObjectType function is used to create a new GraphQL object type. The name property specifies the name of the object type, and the fields property specifies the fields that are available on the object type.
-// the graphQL query will now be: book(id: 123) {
+// 'query' performs READ operations to data. We provide the arguments to be passed to the query and the logic is inside resolve function
+// for first type, the graphQL query will now be: book(id: 123) {
 //    name,
 //    genre
 // }
+//  here, 123 is the argument, name and genre is the field that wish to see and resolve function will use the argument to query the data and return to user
 const RootQuery = new GraphQLObjectType({
     name: 'RootQuery',
     fields: {
@@ -65,9 +67,7 @@ const RootQuery = new GraphQLObjectType({
             // write the logic to fetch the data here
             resolve(parent, args) {
                 const id = args.id;
-                return books.find((book)=>{
-                    return book.id == id
-                })
+                return Book.findById(id);
             }
         },
         author: {
@@ -76,26 +76,63 @@ const RootQuery = new GraphQLObjectType({
             // write the logic to fetch the data here
             resolve(parent, args) {
                 const id = args.id;
-                return authors.find((author)=>{
-                    return author.id == id
-                })
+                return Author.findById(id);
             }
         },
+        // query to get books
         books: {
             type: new GraphQLList(BookType),
             resolve(parent, args) {
-                return books
+                return Book.find({})
             }
         },
         authors: {
             type: new GraphQLList(AuthorType),
             resolve(parent, args) {
-                return authors
+                // return all books without having any condition
+                return Author.find({})
             }
         }
     }
 })
 
+// 'mutation' performs write operations to data. same way here also we provide the arguments to be passed to the query and the logic is inside resolve function
+const Mutation = new GraphQLObjectType({
+    name: 'Mutation',
+    fields: {
+        addAuthor: {
+            type: AuthorType,
+            args: {
+                name: { type: GraphQLString },
+                age: { type: graphql.GraphQLInt }
+            },
+            resolve(parent, args) {
+                let author = new Author({
+                    name: args.name,
+                    age: args.age
+                })
+                return author.save()
+            }
+        },
+        addBook: {
+            type: BookType,
+            args: {
+                name: { type: GraphQLString },
+                genre: { type: GraphQLString },
+                authorId: { type: GraphQLID  }
+            },
+            resolve(parent, args) {
+                let book = new Book({
+                    name: args.name,
+                    genre: args.genre,
+                    authorId: args.authorId,
+                })
+                return book.save()
+            }
+        }
+    }
+})
 module.exports = new graphql.GraphQLSchema({
-    query: RootQuery
+    query: RootQuery,
+    mutation: Mutation
 })
